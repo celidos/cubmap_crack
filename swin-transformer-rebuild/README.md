@@ -6,4 +6,6 @@
 
 * Fixed an error with CV 0.95 (data leakage at `HubmapDataset`)
 
+* Inference supports multi-fold
+
 * compared with code mr. frog posted. Mostly it 100% accurate.
