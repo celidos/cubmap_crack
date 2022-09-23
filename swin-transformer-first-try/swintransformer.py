@@ -63,7 +63,7 @@ class PatchEmbed(nn.Module):
             x = x.transpose(1, 2).view(-1, self.embed_dim, Wh, Ww)
 
         return x
-    
+
 class PatchMerging(nn.Module):
     r""" Patch Merging Layer.
 
@@ -106,7 +106,7 @@ class PatchMerging(nn.Module):
         x = self.reduction(x)
 
         return x
-    
+
 
 class BasicLayer(nn.Module):
     """ A basic Swin Transformer layer for one stage.
@@ -208,7 +208,7 @@ class BasicLayer(nn.Module):
             return x, H, W, x_down, Wh, Ww
         else:
             return x, H, W, x, H, W
-        
+
 
 class SwinTransformerBlock(nn.Module):
     r""" Swin Transformer Block.
@@ -318,7 +318,7 @@ class SwinTransformerBlock(nn.Module):
     def extra_repr(self) -> str:
         return f"dim={self.dim}, num_heads={self.num_heads}, " \
                f"window_size={self.window_size}, shift_size={self.shift_size}, mlp_ratio={self.mlp_ratio}"
-    
+
 class SwinTransformerV1(nn.Module):
     def __init__(self,
         pretrain_img_size=224,
@@ -411,7 +411,7 @@ class SwinTransformerV1(nn.Module):
             outs.append(out)
 
         return outs
-    
+
 class WindowAttention(nn.Module):
     r""" Window based multi-head self attention (W-MSA) module with relative position bias.
     It supports both of shifted and non-shifted window.
@@ -499,8 +499,8 @@ class WindowAttention(nn.Module):
 
     def extra_repr(self) -> str:
         return f'dim={self.dim}, window_size={self.window_size}, num_heads={self.num_heads}'
-    
-    
+
+
 def window_partition(x, window_size):
     """
     Args:
@@ -623,7 +623,7 @@ class UPerDecoder(nn.Module):
         x = self.fpn_fuse( torch.cat(fusion, 1))
 
         return x, fusion
-    
+
 class LayerNorm2d(nn.Module):
     def __init__(self, dim, eps=1e-6):
         super().__init__()
@@ -637,7 +637,7 @@ class LayerNorm2d(nn.Module):
         x = (x - u) / torch.sqrt(s + self.eps)
         x = self.weight[:, None, None] * x + self.bias[:, None, None]
         return x
-    
+
 def criterion_aux_loss(logit, mask):
     mask = F.interpolate(mask,size=logit.shape[-2:], mode='nearest')
     loss = F.binary_cross_entropy_with_logits(logit,mask)
@@ -663,7 +663,7 @@ class Net(nn.Module):
 
     def __init__(self, cfg):
         super(Net, self).__init__()
-        self.output_type = ['inference', 'loss']
+        self.output_type = cfg['output_type'] if 'output_type' in cfg else ['inference', 'loss']
         
         self.cfg = cfg
 
@@ -712,7 +712,7 @@ class Net(nn.Module):
             output['probability'] = torch.sigmoid(logit)
 
         return output
-    
+
 class Mlp(nn.Module):
     """ Multilayer perceptron."""
 
@@ -732,7 +732,7 @@ class Mlp(nn.Module):
         x = self.fc2(x)
         x = self.drop(x)
         return x
-    
+
 def image_to_tensor(image, mode='bgr'): #image mode
     if mode=='bgr':
         image = image[:,:,::-1]
@@ -788,7 +788,7 @@ def _no_grad_trunc_normal_(tensor, mean, std, a, b):
                       "The distribution of values may be incorrect.",
                       stacklevel=2)
 
-        
+
 def trunc_normal_(tensor, mean=0., std=1., a=-2., b=2.):
     return _no_grad_trunc_normal_(tensor, mean, std, a, b)
 
@@ -824,8 +824,8 @@ class DropPath(nn.Module):
 
     def extra_repr(self):
         return f'drop_prob={round(self.drop_prob,3):0.3f}'
-    
-    
+
+
 class RGB(nn.Module):
     IMAGE_RGB_MEAN = [0.485, 0.456, 0.406] #[0.5, 0.5, 0.5]
     IMAGE_RGB_STD  = [0.229, 0.224, 0.225] #[0.5, 0.5, 0.5]
@@ -840,4 +840,4 @@ class RGB(nn.Module):
     def forward(self, x):
         x = (x-self.mean)/self.std
         return x
-    
+

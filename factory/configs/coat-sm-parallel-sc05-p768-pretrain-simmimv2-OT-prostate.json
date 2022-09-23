@@ -1,0 +1,84 @@
+{
+    "comment": "sc0.5 p768 + prostate shakal + OT + simmimv2 pretrain + harden augm",
+    "current_fold": 3,
+    "device": "cuda:3",
+    "debug": false,
+    "short_name": "coat-small",
+    "output_folder": "./coat-sm-parallel-sc05-p768-pretrain-simmimv2-OT-prostate/",
+    "dataset": {
+        "function": "make_768_dataset",
+        "n_cross_valid_splits": 5,
+        "random_seed": 2022,
+        "train_csv": "./../data/train.csv",
+        "train_images_dir": "./../data/train_images_patches_768_overlap/",
+        "train_masks_dir": "./../data/train_masks_patches_768_overlap/",
+        "spatial_size": 768,
+        "dataset_class": "hubmap_p768_organid",
+        "augmentations": {
+            "train": "train_transform_b",
+            "val": "val_transform_a"
+        }
+    },
+    "start_global_it": 0,
+    "start_epoch": 0,
+    "model": {
+        "encoder": "coat_parallel_small_organ_token",
+        "decoder": "daformer_3x3_conv",
+        "n_classes": 6,
+        "checkpoint_preload": {
+            "function": "load_encoder_pretrained",
+            "args": {
+                "path_to_checkpoint": "./coat-sm-parallel-sc05-p768-pretrain-simmimv2-OT-prostate/checkpoint_fold_3/coat-small_ep_020_dice_0.759344_LAST.pt",
+                "strict": false
+            }
+        }
+    },
+    "batch_size": 4,
+    "virtual_batch_size": 1,
+    "base_lr": 4e-05,
+    "optimizer": "adamw",
+    "optimizer_args": {
+        "weight_decay": 0.005
+    },
+    "n_epochs": 80,
+    "criterion_schedule": "criterion_schedule_1",
+    "lr_schedule_function": "lr_function_a1",
+    "aux_losses": [
+        [
+            "aux_serial_1",
+            0.2
+        ],
+        [
+            "aux_serial_2",
+            0.2
+        ],
+        [
+            "aux_serial_3",
+            0.2
+        ],
+        [
+            "aux_parallel_1",
+            0.2
+        ],
+        [
+            "aux_parallel_2",
+            0.4
+        ],
+        [
+            "aux_parallel_3",
+            0.1
+        ]
+    ],
+    "validation_function": "validate_a1",
+    "keep_last_n_checkpoints": {
+        "function": "keep_top_n_checkpoints_coat_by_ep",
+        "n": 10
+    },
+    "before_train": [],
+    "unfreeze_encoder": {
+        "active": true,
+        "n_epoch": 4
+    },
+    'swa_top_n': 5,
+    'swa_device': 'cuda:1'
+}

@@ -39,6 +39,7 @@ import validation as valid_stuff
 import postprocess
 from logger import TrainLogger
 from tools import *
+import augmentations.augmentations_base as augbase
 # -
 
 
@@ -100,9 +101,9 @@ def train_a1(args, mean=np.array([0.0, 0.0, 0.0]), std=np.array([1.0, 1.0, 1.0])
     
     device = args['device']
     
-    train_df = base_dataset_read(args)
+    train_df, train_df_orig = base_dataset_read(args)
     
-    val_df_id = train_df[train_df['fold'] == args['current_fold']]
+    val_df_id = train_df_orig[train_df_orig['fold'] == args['current_fold']]
     
     loader_train, loader_val = get_dataloaders(args, train_df)
     
@@ -139,6 +140,8 @@ def train_a1(args, mean=np.array([0.0, 0.0, 0.0]), std=np.array([1.0, 1.0, 1.0])
     
     criterion_schedule = getattr(crits, args['criterion_schedule'])
     validate = getattr(valid_stuff, args['validation_function'])
+    
+    val_transform = getattr(augbase, args['dataset']['augmentations']['val'])
     
     # EPOCHS -------------------------------------------------------------------------
     
@@ -226,7 +229,7 @@ def train_a1(args, mean=np.array([0.0, 0.0, 0.0]), std=np.array([1.0, 1.0, 1.0])
             model.eval()
 
             with torch.no_grad():
-                val_res = validate(val_df_id, model)
+                val_res = validate(val_df_id, model, val_transform, device)
                 val_dice = np.mean(val_res['dices'])
                 log('DICE: {}'.format(val_dice))
                 for key, value in val_res['by_organ'].items():
@@ -238,17 +241,17 @@ def train_a1(args, mean=np.array([0.0, 0.0, 0.0]), std=np.array([1.0, 1.0, 1.0])
                 )) 
                 torch.save(model.state_dict(), os.path.join(
                     OUTPUT_PTH, 
-                    '{}_ep_{:03d}_dice_{:08.6f}_LAST.pt'.format(args['short_name'], epoch, val_dice)
+                    '{}_ep_{:03d}_LAST.pt'.format(args['short_name'], epoch, val_dice)
                 ))
                 logfile.flush()
                 
-                logtr.log_val_dice(epoch, val_res)
-                logtr.dump()
+                trlog.log_val_dice(epoch, val_res)
+                trlog.dump()
 
         if args['keep_last_n_checkpoints'] is not None:
             if args['keep_last_n_checkpoints']['function'] is not None:
-                keep_function = getattr(postprocess, args['criterion_schedule']['function'])
-                keep_function(args, top_n=args['criterion_schedule']['n'])
+                keep_function = getattr(postprocess, args['keep_last_n_checkpoints']['function'])
+                keep_function(args, top_n=args['keep_last_n_checkpoints']['n'])
         
         if args['unfreeze_encoder']['active']:
             if epoch == args['unfreeze_encoder']['n_epoch']:

@@ -65,7 +65,9 @@ def base_dataset_read(args):
         train_df_out = make_768_dataset(train_df, args)
         print(train_df_out.shape)
         print(train_df_out.head())
-        return train_df_out
+        if args['debug']:
+            return train_df_out.iloc[:100]
+        return train_df_out, train_df
     raise NotImplementedError("args['function'] == {}".format(args['dataset']['function']))
     return None
 
@@ -80,11 +82,14 @@ def worker_init_fn(worker_id):
 
 
 class HubmapDataset768(Dataset):
-    def __init__(self, df, transform=None):
+    def __init__(self, df, transform=None, for_swa:bool=False, device=None):
 
         self.df = df
         self.transform = transform
         self.length = len(self.df)
+        
+        self.for_swa = for_swa
+        self.device = device
 
     def __str__(self):
         string = ''
@@ -99,6 +104,10 @@ class HubmapDataset768(Dataset):
         return self.length
 
     def __getitem__(self, index):
+        if self.for_swa:
+            if index % 100 == 0:
+                print(index, '/', self.length)
+                
         d = self.df.iloc[index]
         organ = ORGAN2ID[d['organ']]
 
@@ -116,17 +125,23 @@ class HubmapDataset768(Dataset):
         }
         
         upd_data = self.transform(image=data['image'], mask=data['mask'])
-
         data.update(upd_data)
+        
+        if self.for_swa:
+            data['image'] = data['image'].to(self.device)
+            data['mask'] = data['mask'].to(self.device)
+            
         return data
 
 
 class HubmapDataset768OrganID(Dataset):
-    def __init__(self, df, transform=None):
+    def __init__(self, df, transform=None, for_swa:bool=False, device=None):
 
         self.df = df
         self.transform = transform
         self.length = len(self.df)
+        self.for_swa = for_swa
+        self.device = device
 
     def __str__(self):
         string = ''
@@ -141,6 +156,9 @@ class HubmapDataset768OrganID(Dataset):
         return self.length
 
     def __getitem__(self, index):
+        if self.for_swa:
+            if index % 100 == 0:
+                print(index, '/', self.length)
         d = self.df.iloc[index]
         organ = ORGAN2ID[d['organ']]
 
@@ -157,21 +175,27 @@ class HubmapDataset768OrganID(Dataset):
             'organ': organ,
         }
         
-        upd_data = self.transform(image=data['image'], mask=data['mask'], organ_id=organ)
-
+        upd_data = self.transform(image=data['image'], mask=data['mask'], organ_id=organ)  
         data.update(upd_data)
+        
+        if self.for_swa:
+            data['image'] = data['image'].to(self.device)
+            data['mask'] = data['mask'].to(self.device)
+        
         return data
 
 
-def get_dataloaders(args, train_df):
+def get_dataloaders(args, train_df, for_swa:bool = False):
     train_transform = getattr(augbase, args['dataset']['augmentations']['train'])
     val_transform = getattr(augbase, args['dataset']['augmentations']['val'])
 
     if args['dataset']['dataset_class'] == 'hubmap_p768':
-        train_dataset = HubmapDataset768(train_df[train_df['fold'] != args['current_fold']], train_transform)
+        train_dataset = HubmapDataset768(train_df[train_df['fold'] != args['current_fold']], 
+                                         train_transform if not for_swa else val_transform, for_swa, args['swa_device'])
         val_dataset = HubmapDataset768(train_df[train_df['fold'] == args['current_fold']], val_transform)
     elif args['dataset']['dataset_class'] == 'hubmap_p768_organid':
-        train_dataset = HubmapDataset768OrganID(train_df[train_df['fold'] != args['current_fold']], train_transform)
+        train_dataset = HubmapDataset768OrganID(train_df[train_df['fold'] != args['current_fold']], 
+                                                train_transform if not for_swa else val_transform, for_swa, args['swa_device'])
         val_dataset = HubmapDataset768OrganID(train_df[train_df['fold'] == args['current_fold']], val_transform)
     else:
         raise NotImplementedError("Unknown dataset: `{}`".format(args['dataset']))
@@ -181,9 +205,9 @@ def get_dataloaders(args, train_df):
                      'worker_init_fn': worker_init_fn}
     loader_train = DataLoader(train_dataset, 
                               batch_size=args['batch_size'], 
-                              shuffle=True,
+                              shuffle=True if not for_swa else False,
                               worker_init_fn=worker_init_fn,
-                              num_workers=12
+                              num_workers=12 if not for_swa else 0
                              )
     loader_val = DataLoader(val_dataset, 
                             batch_size=1, 
@@ -197,26 +221,26 @@ def get_dataloaders(args, train_df):
     print('IMAGE')
     print(sample['image'].shape)
     print('image values: ', float(sample['image'].min()), float(sample['image'].max()))
-    plt.imshow(sample['image'].permute((1, 2, 0)))
+    plt.imshow(sample['image'].detach().cpu().permute((1, 2, 0)))
     plt.show()
 
     print('MASK')
     print(sample['mask'].shape)
     print('mask values: ', sample['mask'].min(), sample['mask'].max())
-    plt.imshow(sample['mask'])
+    plt.imshow(sample['mask'].detach().cpu())
     plt.show()
     
     sample = val_dataset[2]
     print('IMAGE')
     print(sample['image'].shape)
     print('image values: ', float(sample['image'].min()), float(sample['image'].max()))
-    plt.imshow(sample['image'].permute((1, 2, 0)))
+    plt.imshow(sample['image'].detach().cpu().permute((1, 2, 0)))
     plt.show()
 
     print('MASK')
     print(sample['mask'].shape)
     print('mask values: ', sample['mask'].min(), sample['mask'].max())
-    plt.imshow(sample['mask'])
+    plt.imshow(sample['mask'].detach().cpu())
     plt.show()
     
     return loader_train, loader_val

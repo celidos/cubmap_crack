@@ -1,0 +1,71 @@
+{
+    "comment": "sc0.5 p768 + OT + simmimv1 pretrain + unet decoder",
+    "current_fold": 3,
+    "device": "cuda:3",
+    "debug": false,
+    "short_name": "coat-small-unet",
+    "output_folder": "./coat-sm-parallel-sc05-p768-pretrain-simmimv1-OT-ft-lb080/",
+    "dataset": {
+        "function": "make_768_dataset",
+        "n_cross_valid_splits": 5,
+        "random_seed": 2022,
+        "train_csv": "./../data/train.csv",
+        "train_images_dir": "./../data/train_images_patches_768_overlap/",
+        "train_masks_dir": "./../data/train_masks_patches_768_overlap/",
+        "spatial_size": 768,
+        "dataset_class": "hubmap_p768_organid",
+        "augmentations": {
+            "train": "train_transform_a",
+            "val": "val_transform_a"
+        }
+    },
+    "start_global_it": 0,
+    "start_epoch": 0,
+    "model": {
+        "encoder": "coat_parallel_small_organ_token",
+        "decoder": "unet_decoder",
+        "n_classes": 6,
+        "checkpoint_preload": {
+            "function": "load_encoder_from_swa_checkpoint",
+            "args": {
+                "path_to_checkpoint": "REPLACE",
+                "strict": false,
+                "ignore_aux_heads": true
+            }
+        }
+    },
+    "batch_size": 4,
+    "virtual_batch_size": 1,
+    "base_lr": 4e-05,
+    "optimizer": "adamw",
+    "optimizer_args": {
+        "weight_decay": 0.005
+    },
+    "n_epochs": 80,
+    "criterion_schedule": "criterion_schedule_1",
+    "lr_schedule_function": "lr_function_a1",
+    "aux_losses": [
+        [
+            "aux2_unet",
+            0.2
+        ],
+        [
+            "aux3_unet",
+            0.2
+        ]
+    ],
+    "validation_function": "validate_a1",
+    "keep_last_n_checkpoints": {
+        "function": "keep_top_n_checkpoints_coat_by_ep",
+        "n": 15
+    },
+    "before_train": [
+        "freeze_encoder_a"
+    ],
+    "unfreeze_encoder": {
+        "active": false,
+        "n_epoch": 0
+    },
+    "swa_top_n": 5,
+    "swa_device": "cuda:1"
+}

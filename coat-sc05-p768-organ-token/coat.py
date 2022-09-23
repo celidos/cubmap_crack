@@ -142,7 +142,7 @@ class ConvRelPosEnc(nn.Module):
 		EV_hat_img = q_img * conv_v_img
 		zero = torch.zeros((B, h, 1, Ch), dtype=q.dtype, layout=q.layout, device=q.device)
 # 		EV_hat = torch.cat((zero, EV_hat_img), dim=2)                                # Shape: [B, h, N, Ch].
-		EV_hat = torch.cat((zero, zero,EV_hat_img), dim=2)                                # CUSTOM! Shape: [B, h, N, Ch].
+		EV_hat = torch.cat((zero, zero, EV_hat_img), dim=2)                                # CUSTOM! Shape: [B, h, N, Ch].
 		
 		return EV_hat
 

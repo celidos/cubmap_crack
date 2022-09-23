@@ -14,8 +14,8 @@ class MixUpSample(nn.Module):
 		x = self.mixing * F.interpolate(x, scale_factor=self.scale_factor, mode='bilinear', align_corners=False) \
 		    + (1 - self.mixing ) * F.interpolate(x, scale_factor=self.scale_factor, mode='nearest')
 		return x
-	
-	
+
+
 class SegformerDecoder(nn.Module):
 	def __init__(
 			self,
@@ -50,7 +50,7 @@ class SegformerDecoder(nn.Module):
 		return x, out
 
 
-#<todo>
+# <todo>
 # do a reverse mit upsize + conv + Mix FFN
 
 ""

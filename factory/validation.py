@@ -26,6 +26,8 @@ import monai
 from monai.utils.enums import BlendMode, PytorchPadMode
 from monai.inferers import sliding_window_inference
 
+from tools import *
+
 
 def dice_coef2(y_true, y_pred):
     y_true_f = y_true.flatten()
@@ -48,9 +50,9 @@ class Predictor_a1(nn.Module):
         out = self.model({'image': x, 'organ': [ORGAN2ID[self.organ]]})
         prob = F.softmax(out['logits'], dim=1)
         return prob
-    
-    
-def infer_id_a1(predictor, id: str, organ: str, pixel_size=0.4):
+
+
+def infer_id_a1(predictor, id: str, organ: str, pixel_size=0.4, val_transform=None, device='cpu'):
     THRESHOLD = 0.5
     
     image = cv.imread('./../data/train_images/{}.tiff'.format(id))
@@ -60,7 +62,7 @@ def infer_id_a1(predictor, id: str, organ: str, pixel_size=0.4):
     
     scale_factor = 0.5 * (pixel_size / 0.4)
     image = cv.resize(image, None, fx=scale_factor, fy=scale_factor, interpolation=cv.INTER_AREA)
-    
+
 #     image_rot = image.copy()
     masks = []
     for _ in range(1):
@@ -89,7 +91,7 @@ def infer_id_a1(predictor, id: str, organ: str, pixel_size=0.4):
     return pr_mask, gt_mask
 
 
-def validate_a1(val_df, model):
+def validate_a1(val_df, model, val_transform, device):
     predictor = Predictor_a1(model)
     
     dices = []
@@ -99,7 +101,8 @@ def validate_a1(val_df, model):
         id = row['id']
         organ = row['organ']
         pixel_size = row['pixel_size']
-        pred_mask, gt_mask = infer_id_a1(predictor, id, organ=organ, pixel_size=pixel_size)
+        pred_mask, gt_mask = infer_id_a1(predictor, id, organ=organ, pixel_size=pixel_size, 
+                                         val_transform=val_transform, device=device)
         dice = dice_coef2(gt_mask, pred_mask)
         dices.append(dice)
         by_organ_dice[organ].append(dice)
